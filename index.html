@@ -1,0 +1,316 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Latest Activities</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #05101d; overflow: hidden; height: 100%; }
+  .stage { width: 2160px; height: 3840px; position: absolute; top: 0; left: 0; transform-origin: top left; background: #000000; font-family: 'Work Sans', system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden; }
+  .header { flex-shrink: 0; height: 340px; background: linear-gradient(165deg,#0a2036 0%,#0d2a4e 45%,#123a63 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; }
+  .header .title { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 110px; letter-spacing: 4px; color: #ffffff; }
+  .header .underline { width: 220px; height: 6px; background: #e7b750; border-radius: 3px; }
+  .poster-area { flex: 1; position: relative; background: #000000; }
+  .placeholder { position: absolute; inset: 40px; border: 4px dashed #445266; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; color: #7c8794; }
+  .placeholder .label { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 52px; letter-spacing: 2px; text-align: center; }
+  .slide { position: absolute; inset: 40px; width: calc(100% - 80px); height: calc(100% - 80px); object-fit: contain; border-radius: 12px; opacity: 0; transition: opacity 1.2s ease; }
+  .slide.active { opacity: 1; }
+  .upload-btn { position: absolute; top: 28px; right: 28px; width: 84px; height: 52px; border-radius: 8px; background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.28); display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0.55; z-index: 5; }
+  .upload-btn svg { width: 26px; height: 26px; }
+  .modal-backdrop { position: absolute; inset: 0; background: rgba(5,16,29,0.72); display: none; align-items: center; justify-content: center; z-index: 10; }
+  .modal-backdrop.open { display: flex; }
+  .modal-card { width: 1600px; max-width: 92%; max-height: 88%; overflow: auto; background: #ffffff; border-radius: 32px; padding: 80px; display: flex; flex-direction: column; gap: 36px; }
+  .modal-card h2 { margin: 0; font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 64px; color: #0d2a4e; }
+  .modal-card p { margin: 0; font-size: 34px; color: #42618a; line-height: 1.5; }
+  .file-btn { align-self: flex-start; background: #eef3f8; border: 3px solid #cdd9e5; border-radius: 16px; padding: 28px 44px; font-size: 36px; font-weight: 600; color: #0d2a4e; cursor: pointer; }
+  .thumb-grid { display: flex; flex-wrap: wrap; gap: 24px; min-height: 280px; }
+  .thumb { position: relative; width: 280px; height: 280px; border-radius: 16px; overflow: hidden; background: #000; border: 3px solid #cdd9e5; }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb .remove { position: absolute; top: 8px; right: 8px; width: 56px; height: 56px; border-radius: 50%; background: rgba(13,42,78,0.85); color: #ffffff; border: none; font-size: 32px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .thumb-empty { color: #9aa7b4; font-size: 32px; align-self: center; }
+  .actions { display: flex; gap: 28px; margin-top: 12px; flex-wrap: wrap; }
+  .btn { border: none; border-radius: 16px; padding: 30px 52px; font-size: 38px; font-weight: 700; cursor: pointer; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 1px; }
+  .btn-primary { background: #e7b750; color: #0d2a4e; }
+  .btn-secondary { background: #eef3f8; color: #0d2a4e; }
+  .btn-danger { background: #ffffff; color: #b3432f; border: 3px solid #f0cfc6; }
+  .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+  .status { font-size: 32px; color: #0d2a4e; min-height: 44px; }
+  .status.error { color: #b3432f; }
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+  <div class="header">
+    <div class="title">LATEST ACTIVITIES</div>
+    <div class="underline"></div>
+  </div>
+
+  <div class="poster-area" id="poster-area"></div>
+
+  <div class="upload-btn" id="upload-btn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#e7b750" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"></path><path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3"></path></svg>
+  </div>
+
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal-card">
+      <h2>Manage Event Posters</h2>
+      <p>Add one or more poster images. With more than one, the TV will automatically rotate between them every few seconds. Changes appear on the TV within a couple seconds of saving.</p>
+      <label class="file-btn">
+        Add Poster Image(s)
+        <input type="file" accept="image/*" id="file-input" multiple style="display:none;">
+      </label>
+      <div class="thumb-grid" id="thumb-grid"></div>
+      <div class="status" id="status"></div>
+      <div class="actions">
+        <button class="btn btn-primary" id="publish-btn">Save to TV</button>
+        <button class="btn btn-secondary" id="cancel-btn">Cancel</button>
+        <button class="btn btn-danger" id="clear-btn">Delete All Posters</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase (client SDK - these are public config values, safe to expose) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+// ====== PASTE YOUR FIREBASE CONFIG HERE ======
+var firebaseConfig = {
+  apiKey: "AIzaSyAMPusFjn8Zn7Rl3ulYPGLfd7wsksNSRUk",
+  authDomain: "latest-activities-tv.firebaseapp.com",
+  projectId: "latest-activities-tv",
+  storageBucket: "latest-activities-tv.firebasestorage.app",
+  messagingSenderId: "660359637726",
+  appId: "1:660359637726:web:7eabd7d01ac450912d704f"
+};
+// ==============================================
+
+firebase.initializeApp(firebaseConfig);
+var db = firebase.firestore();
+// Each poster is its own document (Firestore's 1 MB per-document limit is
+// why images are compressed fairly hard below) - no Firebase Storage needed,
+// so this all works on the free Spark plan.
+var POSTERS_COL = db.collection('posters');
+var FIRESTORE_DOC_SAFE_BYTES = 900000; // stay comfortably under the 1 MiB limit
+
+var MAX_POSTERS = 8;
+var ROTATE_MS = 8000;
+var rotationTimer = null;
+
+function fitStage() {
+  var stage = document.getElementById('stage');
+  var s = Math.min(window.innerWidth / 2160, window.innerHeight / 3840);
+  stage.style.transform = 'scale(' + s + ')';
+  document.body.style.width = (2160 * s) + 'px';
+  document.body.style.height = (3840 * s) + 'px';
+}
+window.addEventListener('resize', fitStage);
+fitStage();
+
+function renderPosters(images) {
+  var el = document.getElementById('poster-area');
+  if (rotationTimer) { clearInterval(rotationTimer); rotationTimer = null; }
+
+  if (!images || images.length === 0) {
+    el.innerHTML = '<div class="placeholder">' +
+      '<svg width="140" height="140" viewBox="0 0 24 24" fill="none" stroke="#7c8794" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M8 7l1.5-2.5h5L16 7"></path><circle cx="12" cy="13.5" r="3.5"></circle></svg>' +
+      '<div class="label">EVENT POSTER GOES HERE</div>' +
+      '</div>';
+    return;
+  }
+
+  el.innerHTML = images.map(function (src, i) {
+    return '<img class="slide' + (i === 0 ? ' active' : '') + '" src="' + src + '" alt="Event poster">';
+  }).join('');
+
+  if (images.length > 1) {
+    var slides = el.querySelectorAll('.slide');
+    var current = 0;
+    rotationTimer = setInterval(function () {
+      slides[current].classList.remove('active');
+      current = (current + 1) % slides.length;
+      slides[current].classList.add('active');
+    }, ROTATE_MS);
+  }
+}
+
+// Live sync: every viewer (including the TV) gets pushed the new list
+// the instant anyone saves changes - no manual refresh needed.
+POSTERS_COL.orderBy('order').onSnapshot(function (snap) {
+  var images = snap.docs.map(function (d) { return d.data().image; });
+  renderPosters(images);
+}, function (err) {
+  console.error('Firestore sync error', err);
+  document.getElementById('poster-area').innerHTML =
+    '<div class="placeholder"><div class="label">CONNECTION ERROR</div></div>';
+});
+
+// ---------- Upload / manage UI ----------
+
+var uploadBtn = document.getElementById('upload-btn');
+var modalBackdrop = document.getElementById('modal-backdrop');
+var fileInput = document.getElementById('file-input');
+var thumbGrid = document.getElementById('thumb-grid');
+var publishBtn = document.getElementById('publish-btn');
+var cancelBtn = document.getElementById('cancel-btn');
+var clearBtn = document.getElementById('clear-btn');
+var statusEl = document.getElementById('status');
+var workingImages = [];
+var pendingFiles = []; // { dataUrl, blob } not-yet-uploaded
+
+uploadBtn.addEventListener('click', function () {
+  POSTERS_COL.orderBy('order').get().then(function (snap) {
+    workingImages = snap.docs.map(function (d) { return d.data().image; });
+    pendingFiles = [];
+    renderThumbs();
+    setStatus('');
+    publishBtn.disabled = false;
+    modalBackdrop.classList.add('open');
+  });
+});
+cancelBtn.addEventListener('click', function () {
+  modalBackdrop.classList.remove('open');
+});
+clearBtn.addEventListener('click', function () {
+  workingImages = [];
+  pendingFiles = [];
+  renderThumbs();
+  setStatus('All posters cleared below. Click Save to TV to make it live.');
+});
+
+function renderThumbs() {
+  var items = workingImages.map(function (src) { return { preview: src, isNew: false }; })
+    .concat(pendingFiles.map(function (src) { return { preview: src, isNew: true }; }));
+
+  if (items.length === 0) {
+    thumbGrid.innerHTML = '<div class="thumb-empty">No posters yet &mdash; add one below.</div>';
+    return;
+  }
+  thumbGrid.innerHTML = items.map(function (item, i) {
+    return '<div class="thumb"><img src="' + item.preview + '" alt="Poster ' + (i + 1) + '"><button class="remove" data-i="' + i + '">&times;</button></div>';
+  }).join('');
+  Array.prototype.forEach.call(thumbGrid.querySelectorAll('.remove'), function (btn) {
+    btn.addEventListener('click', function () {
+      var i = parseInt(btn.getAttribute('data-i'), 10);
+      if (i < workingImages.length) {
+        workingImages.splice(i, 1);
+      } else {
+        pendingFiles.splice(i - workingImages.length, 1);
+      }
+      renderThumbs();
+    });
+  });
+}
+
+fileInput.addEventListener('change', function (e) {
+  var files = Array.prototype.slice.call(e.target.files || []);
+  if (!files.length) return;
+  var room = Math.max(0, MAX_POSTERS - workingImages.length - pendingFiles.length);
+  if (files.length > room) {
+    setStatus('You can have up to ' + MAX_POSTERS + ' posters at a time. Only the first ' + room + ' were added.', true);
+  } else {
+    setStatus('Preparing image' + (files.length > 1 ? 's' : '') + '...');
+  }
+  files = files.slice(0, room);
+  Promise.all(files.map(function (f) { return encodeWithSizeLimit(f); })).then(function (dataUrls) {
+    pendingFiles = pendingFiles.concat(dataUrls);
+    renderThumbs();
+    fileInput.value = '';
+    if (room >= files.length) setStatus('');
+  }).catch(function () {
+    setStatus('One of those images could not be compressed small enough. Try a simpler/smaller photo.', true);
+  });
+});
+
+function setStatus(msg, isError) {
+  statusEl.textContent = msg || '';
+  statusEl.className = isError ? 'status error' : 'status';
+}
+
+function resizeImage(file, maxWidth, quality) {
+  return new Promise(function (resolve, reject) {
+    var reader = new FileReader();
+    reader.onerror = function () { reject(reader.error); };
+    reader.onload = function () {
+      var img = new Image();
+      img.onerror = function () { reject(new Error('bad image')); };
+      img.onload = function () {
+        var scale = Math.min(1, maxWidth / img.width);
+        var w = Math.max(1, Math.round(img.width * scale));
+        var h = Math.max(1, Math.round(img.height * scale));
+        var canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// Firestore documents cap at 1 MB, so keep shrinking/compressing until the
+// encoded image comfortably fits (with room for the doc's other fields).
+var COMPRESSION_STEPS = [
+  { maxWidth: 1600, quality: 0.7 },
+  { maxWidth: 1400, quality: 0.55 },
+  { maxWidth: 1100, quality: 0.45 },
+  { maxWidth: 900, quality: 0.4 },
+  { maxWidth: 700, quality: 0.35 }
+];
+function encodeWithSizeLimit(file) {
+  function tryStep(i) {
+    if (i >= COMPRESSION_STEPS.length) {
+      return Promise.reject(new Error('Could not compress under the size limit'));
+    }
+    var step = COMPRESSION_STEPS[i];
+    return resizeImage(file, step.maxWidth, step.quality).then(function (dataUrl) {
+      if (dataUrl.length > FIRESTORE_DOC_SAFE_BYTES) return tryStep(i + 1);
+      return dataUrl;
+    });
+  }
+  return tryStep(0);
+}
+
+publishBtn.addEventListener('click', function () {
+  publishBtn.disabled = true;
+  clearBtn.disabled = true;
+  setStatus('Saving...');
+
+  // workingImages (kept from before) + pendingFiles (newly added) is the
+  // final ordered list. Simplest reliable approach: wipe all existing
+  // poster documents and recreate them fresh in the right order.
+  var finalImages = workingImages.concat(pendingFiles);
+
+  POSTERS_COL.get().then(function (snap) {
+    var batch = db.batch();
+    snap.docs.forEach(function (d) { batch.delete(d.ref); });
+    finalImages.forEach(function (image, i) {
+      var ref = POSTERS_COL.doc();
+      batch.set(ref, { image: image, order: i, updatedAt: new Date().toISOString() });
+    });
+    return batch.commit();
+  }).then(function () {
+    setStatus('Saved! The TV will update automatically.');
+    modalBackdrop.classList.remove('open');
+    publishBtn.disabled = false;
+    clearBtn.disabled = false;
+  }).catch(function (err) {
+    console.error(err);
+    setStatus('Something went wrong saving. Please try again.', true);
+    publishBtn.disabled = false;
+    clearBtn.disabled = false;
+  });
+});
+</script>
+
+</body>
+</html>
